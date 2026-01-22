@@ -1,71 +1,99 @@
 /**
  * Script to verify TNB account exists in the database
- * Run with: npx tsx scripts/verify-tnb-account.ts
+ * Run with: yarn db:verify
  */
 
-import { db } from '../db';
-import { users, techProfiles, techWebsites } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { TNB_EMAIL, TNB_SUBDOMAIN } from '../lib/tnb-config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env.local FIRST
+config({ path: resolve(process.cwd(), '.env.local') });
+
+// Verify DATABASE_URL is loaded
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL not found in .env.local');
+  console.log('\n📝 Please ensure .env.local exists with DATABASE_URL set');
+  process.exit(1);
+}
+
+// Now import database modules
+import postgres from 'postgres';
+
+const TNB_EMAIL = 'tysnailboutique@outlook.com';
+const TNB_SUBDOMAIN = 'tnb';
+
+// Create database connection
+const sql = postgres(process.env.DATABASE_URL);
 
 async function verifyTNBAccount() {
   console.log('🔍 Checking for TNB account...\n');
 
   try {
     // Check if user exists
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, TNB_EMAIL),
-      with: {
-        techProfile: true,
-      },
-    });
+    const users = await sql`
+      SELECT id, username, email, user_type 
+      FROM users 
+      WHERE email = ${TNB_EMAIL}
+    `;
 
-    if (!user) {
+    if (users.length === 0) {
       console.error(`❌ User not found with email: ${TNB_EMAIL}`);
       console.log('\n📝 The TNB account needs to be created in the database first.');
       console.log('   This should be done through the main Ivory\'s Choice platform.');
+      await sql.end();
       return;
     }
 
+    const user = users[0];
     console.log('✅ User found:');
     console.log(`   ID: ${user.id}`);
     console.log(`   Email: ${user.email}`);
     console.log(`   Username: ${user.username}`);
-    console.log(`   User Type: ${user.userType}\n`);
+    console.log(`   User Type: ${user.user_type}\n`);
 
     // Check if tech profile exists
-    if (!user.techProfile) {
+    const techProfiles = await sql`
+      SELECT * FROM tech_profiles 
+      WHERE user_id = ${user.id}
+    `;
+
+    if (techProfiles.length === 0) {
       console.error('❌ Tech profile not found for this user');
       console.log('\n📝 A tech profile needs to be created for this account.');
+      await sql.end();
       return;
     }
 
+    const techProfile = techProfiles[0];
     console.log('✅ Tech Profile found:');
-    console.log(`   ID: ${user.techProfile.id}`);
-    console.log(`   Business Name: ${user.techProfile.businessName}`);
-    console.log(`   Location: ${user.techProfile.location}`);
-    console.log(`   Rating: ${user.techProfile.rating}`);
-    console.log(`   Verified: ${user.techProfile.isVerified}\n`);
+    console.log(`   ID: ${techProfile.id}`);
+    console.log(`   Business Name: ${techProfile.business_name}`);
+    console.log(`   Location: ${techProfile.location}`);
+    console.log(`   Rating: ${techProfile.rating}`);
+    console.log(`   Verified: ${techProfile.is_verified}\n`);
 
     // Check if website exists
-    const website = await db.query.techWebsites.findFirst({
-      where: eq(techWebsites.techProfileId, user.techProfile.id),
-    });
+    const websites = await sql`
+      SELECT * FROM tech_websites 
+      WHERE tech_profile_id = ${techProfile.id}
+    `;
 
-    if (!website) {
+    if (websites.length === 0) {
       console.warn('⚠️  Website configuration not found');
       console.log(`\n📝 You may need to create a website entry with subdomain: ${TNB_SUBDOMAIN}`);
     } else {
+      const website = websites[0];
       console.log('✅ Website configuration found:');
       console.log(`   ID: ${website.id}`);
       console.log(`   Subdomain: ${website.subdomain}`);
-      console.log(`   Published: ${website.isPublished}\n`);
+      console.log(`   Published: ${website.is_published}\n`);
     }
 
     // Check services
-    const services = await db.query.services.findMany({
-      where: eq(techProfiles.id, user.techProfile.id),
-    });
+    const services = await sql`
+      SELECT * FROM services 
+      WHERE tech_profile_id = ${techProfile.id}
+    `;
 
     console.log(`✅ Services: ${services.length} found`);
     services.forEach((service, index) => {
@@ -75,11 +103,14 @@ async function verifyTNBAccount() {
     console.log('\n✅ TNB account is properly configured!');
     console.log('   All bookings on this site will be associated with this account.');
 
+    await sql.end();
+
   } catch (error) {
     console.error('❌ Error checking TNB account:', error);
     if (error instanceof Error) {
       console.error('   Message:', error.message);
     }
+    await sql.end();
   }
 
   process.exit(0);
