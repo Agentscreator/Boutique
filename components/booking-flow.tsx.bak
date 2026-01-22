@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { BookingSuccess } from "./booking-success";
 
 interface BookingFlowProps {
   isOpen: boolean;
@@ -101,10 +100,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
-  const [bookingId, setBookingId] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const totalSteps = 4;
 
@@ -171,47 +166,51 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
       setTimeout(() => {
         setHeartAnimations(prev => ({ ...prev, [serviceName]: false }));
       }, 1000);
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setBookingError(null);
-
-    try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          services: bookingData.services,
-          appointmentDate: bookingData.date,
-          appointmentTime: bookingData.time,
-          guestName: bookingData.name,
-          guestEmail: bookingData.email,
-          guestPhone: bookingData.phone,
-          clientNotes: bookingData.inspiration,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create booking');
-      }
-
-      setBookingId(data.booking.id);
-      setBookingSuccess(true);
-      setIsSubmitting(false);
-
-    } catch (error) {
-      console.error('Booking error:', error);
-      setBookingError(error instanceof Error ? error.message : 'Failed to create booking');
-      setIsSubmitting(false);
     }
+    
+    setBookingData({ ...bookingData, services: newServices });
   };
 
-  const handleCloseSuccess = () => {
-    setBookingSuccess(false);
-    setBookingId(null);
+  const handleSubmit = () => {
+    // Create Instagram DM link with booking details
+    const pricing = calculatePricing();
+    
+    let servicesText = "";
+    pricing.services.forEach(service => {
+      servicesText += `• ${service.name} - £${service.price}\n`;
+    });
+
+    const message = `Hi! I'd like to book an appointment:
+
+📅 APPOINTMENT DETAILS:
+Date: ${bookingData.date}
+Time: ${bookingData.time}
+Name: ${bookingData.name}
+Email: ${bookingData.email}
+Phone: ${bookingData.phone}
+
+�  SERVICES REQUESTED:
+${servicesText}
+💰 PRICING BREAKDOWN:
+Subtotal: £${pricing.subtotal.toFixed(2)}
+Platform Service Fee (15%): £${pricing.platformFee.toFixed(2)}
+Total: £${pricing.total.toFixed(2)}
+
+🎨 Design Inspiration: ${bookingData.inspiration || "None specified"}
+
+Looking forward to hearing from you!`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const instagramUrl = `https://instagram.com/tysnailboutique`;
+    
+    // Open Instagram in new tab
+    window.open(instagramUrl, '_blank');
+    
+    // Show success message and close modal
+    alert("Your booking request has been prepared! Please send the message on Instagram to complete your booking.");
+    onClose();
+    
+    // Reset form
     setCurrentStep(1);
     setBookingData({
       services: [],
@@ -219,12 +218,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
       time: "",
       name: "",
       email: "",
-      phone: "",
-      inspiration: "",
-    });
-    onClose();
-  };
-
       phone: "",
       inspiration: "",
     });
@@ -617,24 +610,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
     }
   };
 
-  // Show success modal if booking was successful
-  if (bookingSuccess) {
-    const pricing = calculatePricing();
-    return (
-      <BookingSuccess
-        isOpen={isOpen}
-        onClose={handleCloseSuccess}
-        bookingData={{
-          date: bookingData.date,
-          time: bookingData.time,
-          email: bookingData.email,
-        }}
-        bookingId={bookingId}
-        totalPrice={pricing.total}
-      />
-    );
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -684,13 +659,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
             {renderStep()}
           </AnimatePresence>
 
-          {/* Error Message */}
-          {bookingError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">{bookingError}</p>
-            </div>
-          )}
-
           {/* Navigation buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t border-[#e2e8f0]">
             <Button
@@ -706,10 +674,9 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
             {currentStep === totalSteps ? (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-[#2d3748] text-white hover:bg-[#1a202c] disabled:bg-[#e2e8f0] disabled:text-[#64748b]"
+                className="bg-[#2d3748] text-white hover:bg-[#1a202c]"
               >
-                {isSubmitting ? 'Creating Booking...' : 'Complete Booking'}
+                Complete Booking
                 <MessageCircleHeart className="w-4 h-4 ml-2" />
               </Button>
             ) : (
