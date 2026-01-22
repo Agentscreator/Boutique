@@ -225,11 +225,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
     onClose();
   };
 
-      phone: "",
-      inspiration: "",
-    });
-  };
-
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
