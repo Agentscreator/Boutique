@@ -64,7 +64,7 @@ export function Header() {
                     window.location.href = '/#services';
                   } else {
                     // We're on home page, scroll to services section
-                    const element = document.querySelector('#services');
+                    const element = document.querySelector('#services') as HTMLElement;
                     if (element) {
                       const headerHeight = 100; // Account for fixed header
                       const elementPosition = element.offsetTop - headerHeight;
