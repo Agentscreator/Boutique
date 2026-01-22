@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "db:verify": "tsx scripts/verify-tnb-account.ts",
+    "db:setup": "tsx scripts/setup-tnb-profile.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
