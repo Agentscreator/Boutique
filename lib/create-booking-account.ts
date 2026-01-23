@@ -1,4 +1,6 @@
-import postgres from 'postgres';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 interface CreateBookingAccountParams {
@@ -23,26 +25,21 @@ interface BookingAccount {
  * - If new user: Creates account with type 'client' (no password initially)
  */
 export async function createOrGetBookingAccount(
-  sql: postgres.Sql,
   params: CreateBookingAccountParams
 ): Promise<BookingAccount> {
   const { email, name, phone } = params;
 
   // Check if user already exists
-  const existingUsers = await sql`
-    SELECT id, username, email
-    FROM users
-    WHERE email = ${email}
-    LIMIT 1
-  `;
+  const existingUser = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
 
-  if (existingUsers.length > 0) {
-    const user = existingUsers[0];
-    console.log(`🔗 Found existing account for ${email} (User ID: ${user.id})`);
+  if (existingUser) {
+    console.log(`🔗 Found existing account for ${email} (User ID: ${existingUser.id})`);
     return {
-      userId: user.id,
-      email: user.email,
-      username: user.username,
+      userId: existingUser.id,
+      email: existingUser.email,
+      username: existingUser.username,
       isNewAccount: false,
     };
   }
@@ -60,11 +57,11 @@ export async function createOrGetBookingAccount(
   const maxAttempts = 5;
 
   while (attempts < maxAttempts) {
-    const existingUsername = await sql`
-      SELECT id FROM users WHERE username = ${username} LIMIT 1
-    `;
+    const existingUsername = await db.query.users.findFirst({
+      where: eq(users.username, username),
+    });
 
-    if (existingUsername.length === 0) {
+    if (!existingUsername) {
       break;
     }
 
@@ -75,22 +72,13 @@ export async function createOrGetBookingAccount(
   }
 
   // Create the user account (no password initially - they can set one later)
-  const [newUser] = await sql`
-    INSERT INTO users (
-      username,
-      email,
-      user_type,
-      created_at,
-      updated_at
-    ) VALUES (
-      ${username},
-      ${email},
-      'client',
-      NOW(),
-      NOW()
-    )
-    RETURNING id, username, email
-  `;
+  const [newUser] = await db.insert(users).values({
+    username,
+    email,
+    userType: 'client',
+    phoneNumber: phone,
+    createdFromBooking: true,
+  }).returning();
 
   console.log(`✨ Created new Ivory's Choice account for ${email} (User ID: ${newUser.id}, Username: ${newUser.username})`);
 
@@ -107,9 +95,10 @@ export async function createOrGetBookingAccount(
  * Returns the session token
  */
 export async function createUserSession(
-  sql: postgres.Sql,
   userId: number
 ): Promise<string> {
+  const { sessions } = await import('@/db/schema');
+  
   // Generate session token
   const sessionToken = crypto.randomBytes(32).toString('hex');
   
@@ -117,10 +106,11 @@ export async function createUserSession(
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
 
-  await sql`
-    INSERT INTO sessions (user_id, token, expires_at)
-    VALUES (${userId}, ${sessionToken}, ${expiresAt.toISOString()})
-  `;
+  await db.insert(sessions).values({
+    userId,
+    token: sessionToken,
+    expiresAt,
+  });
 
   return sessionToken;
 }

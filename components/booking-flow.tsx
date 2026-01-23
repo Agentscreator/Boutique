@@ -198,12 +198,16 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
+        // Show more detailed error message if available
+        const errorMessage = data.details || data.error || 'Failed to create checkout session';
+        throw new Error(errorMessage);
       }
 
       // Redirect to Stripe Checkout using the session URL
       if (data.sessionUrl) {
-        window.location.href = data.sessionUrl;
+        // Use window.location.assign for better mobile compatibility
+        // This is more reliable on iOS Safari and other mobile browsers
+        window.location.assign(data.sessionUrl);
       } else {
         throw new Error('No checkout URL received');
       }
