@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BookingSuccess } from "./booking-success";
-import { BookingSuccess } from "./booking-success";
 
 interface BookingFlowProps {
   isOpen: boolean;
@@ -103,9 +102,6 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const totalSteps = 4;
 
@@ -172,6 +168,11 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
       setTimeout(() => {
         setHeartAnimations(prev => ({ ...prev, [serviceName]: false }));
       }, 1000);
+    }
+    
+    setBookingData({ ...bookingData, services: newServices });
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setBookingError(null);
