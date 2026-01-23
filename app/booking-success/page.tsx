@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
+
 function BookingSuccessContent() {
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('booking_id');
