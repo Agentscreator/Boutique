@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Check, Download, Sparkles, ArrowLeft } from "lucide-react";
@@ -8,27 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
-export default function BookingSuccessPage() {
+function BookingSuccessContent() {
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('booking_id');
-  const sessionId = searchParams.get('session_id');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate loading
-    setTimeout(() => setLoading(loading), 1000);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#e8edf2] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#2d3748] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#64748b]">Confirming your booking...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#e8edf2] py-20">
@@ -119,5 +101,20 @@ export default function BookingSuccessPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function BookingSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#e8edf2] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#2d3748] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#64748b]">Confirming your booking...</p>
+        </div>
+      </div>
+    }>
+      <BookingSuccessContent />
+    </Suspense>
   );
 }
