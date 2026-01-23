@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { Check, Download, Sparkles, ArrowLeft, User, Mail, Lock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
 // Force dynamic rendering for this page
@@ -169,15 +168,14 @@ function BookingSuccessContent() {
 
           {/* Back to Home */}
           <div className="text-center">
-            <Link href="/">
-              <Button
-                variant="outline"
-                className="border-[#e2e8f0] text-[#64748b] hover:bg-white"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="border-[#e2e8f0] text-[#64748b] hover:bg-white"
+              onClick={() => window.location.href = '/'}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
           </div>
         </motion.div>
       </div>
