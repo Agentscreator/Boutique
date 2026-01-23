@@ -6,6 +6,7 @@ const navLinks = [
   { href: "#services", label: "Services" },
   { href: "/inspiration", label: "Inspiration" },
   { href: "/policies", label: "Policies" },
+  { href: "#book", label: "Book Appointment" },
 ];
 
 export function Header() {
@@ -67,6 +68,24 @@ export function Header() {
                     const element = document.querySelector('#services') as HTMLElement;
                     if (element) {
                       const headerHeight = 100; // Account for fixed header
+                      const elementPosition = element.offsetTop - headerHeight;
+                      window.scrollTo({ 
+                        top: elementPosition,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }
+                }
+                // Handle Book Appointment navigation
+                else if (link.href === '#book') {
+                  e.preventDefault();
+                  
+                  if (window.location.pathname !== '/') {
+                    window.location.href = '/#book';
+                  } else {
+                    const element = document.querySelector('#book') as HTMLElement;
+                    if (element) {
+                      const headerHeight = 100;
                       const elementPosition = element.offsetTop - headerHeight;
                       window.scrollTo({ 
                         top: elementPosition,

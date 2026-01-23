@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BookingSuccess } from "./booking-success";
+import { loadStripe } from '@stripe/stripe-js';
 
 interface BookingFlowProps {
   isOpen: boolean;
@@ -178,7 +179,8 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
     setBookingError(null);
 
     try {
-      const response = await fetch('/api/bookings', {
+      // Create Stripe checkout session
+      const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,12 +199,23 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create booking');
+        throw new Error(data.error || 'Failed to create checkout session');
       }
 
-      setBookingId(data.booking.id);
-      setBookingSuccess(true);
-      setIsSubmitting(false);
+      // Redirect to Stripe Checkout
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+      
+      if (!stripe) {
+        throw new Error('Stripe failed to load');
+      }
+
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
 
     } catch (error) {
       console.error('Booking error:', error);
@@ -706,8 +719,8 @@ export function BookingFlow({ isOpen, onClose }: BookingFlowProps) {
                 disabled={isSubmitting}
                 className="bg-[#2d3748] text-white hover:bg-[#1a202c] disabled:bg-[#e2e8f0] disabled:text-[#64748b]"
               >
-                {isSubmitting ? 'Creating Booking...' : 'Complete Booking'}
-                <MessageCircleHeart className="w-4 h-4 ml-2" />
+                {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button
