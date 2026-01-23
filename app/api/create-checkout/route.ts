@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getTNBTechProfile } from '@/lib/tnb-config';
+import { createOrGetBookingAccount, createUserSession } from '@/lib/create-booking-account';
 import postgres from 'postgres';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2024-12-18.acacia' as any,
 });
 
 const sql = postgres(process.env.DATABASE_URL!);
@@ -24,6 +25,13 @@ export async function POST(request: NextRequest) {
 
     // Get TNB tech profile
     const techProfile = await getTNBTechProfile();
+
+    // Create or get user account for the booking
+    const bookingAccount = await createOrGetBookingAccount(sql, {
+      email: guestEmail,
+      name: guestName,
+      phone: guestPhone,
+    });
 
     // Get service details from database
     const serviceRecords = await sql`
@@ -92,6 +100,7 @@ export async function POST(request: NextRequest) {
     
     const [newBooking] = await sql`
       INSERT INTO bookings (
+        client_id,
         tech_profile_id,
         service_id,
         appointment_date,
@@ -106,6 +115,7 @@ export async function POST(request: NextRequest) {
         status,
         payment_status
       ) VALUES (
+        ${bookingAccount.userId},
         ${techProfile.id},
         ${mainService.id},
         ${appointmentDateTime.toISOString()},
@@ -130,19 +140,23 @@ export async function POST(request: NextRequest) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/booking-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${newBooking.id}`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/booking-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${newBooking.id}&new_account=${bookingAccount.isNewAccount}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/?canceled=true`,
       customer_email: guestEmail,
       metadata: {
         booking_id: newBooking.id.toString(),
+        user_id: bookingAccount.userId.toString(),
         tech_profile_id: techProfile.id.toString(),
         appointment_date: appointmentDateTime.toISOString(),
+        is_new_account: bookingAccount.isNewAccount.toString(),
       },
     });
 
     return NextResponse.json({
       sessionId: session.id,
+      sessionUrl: session.url,
       bookingId: newBooking.id,
+      isNewAccount: bookingAccount.isNewAccount,
     });
 
   } catch (error) {

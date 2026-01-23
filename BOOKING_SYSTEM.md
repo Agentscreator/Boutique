@@ -80,20 +80,32 @@ INSERT INTO tech_time_off (tech_profile_id, start_date, end_date, reason)
 VALUES (33, '2024-12-20', '2024-12-27', 'Holiday vacation');
 ```
 
-### 3. Bookings
+### 3. Bookings & Automatic Account Creation
 **Destination:** Database (`bookings` table)
 
 When a customer books on the website:
 1. They select services from the database
 2. They choose a date and see only available time slots
 3. They enter their information
-4. Booking is created in the database with:
+4. They complete payment via Stripe
+5. **Automatic Account Creation**: After successful payment, an Ivory's Choice user account is automatically created for the guest
+   - If email already exists, booking is linked to existing account
+   - If new email, a new `client` account is created
+   - Username is generated from their name
+   - Account is linked to the booking via `client_id`
+6. Booking is created in the database with:
    - `tech_profile_id`: 33 (TNB's profile)
-   - `guest_name`, `guest_email`, `guest_phone`: Customer info
+   - `client_id`: Linked user account (created automatically)
+   - `guest_name`, `guest_email`, `guest_phone`: Customer info (preserved)
    - `appointment_date`: Selected date/time
    - `service_price`, `service_fee`, `total_price`: Calculated pricing
-   - `status`: 'pending' (awaiting confirmation)
-   - `payment_status`: 'pending'
+   - `status`: 'confirmed' (after payment)
+   - `payment_status`: 'paid'
+   - `stripe_checkout_session_id`: Stripe session ID
+   - `stripe_payment_intent_id`: Stripe payment ID
+   - `paid_at`: Payment timestamp
+
+**See [ACCOUNT_CREATION.md](./ACCOUNT_CREATION.md) for detailed information about automatic account creation.**
 
 **API Endpoint:** `POST /api/bookings`
 ```json

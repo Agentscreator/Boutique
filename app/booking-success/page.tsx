@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Check, Download, Sparkles, ArrowLeft } from "lucide-react";
+import { Check, Download, Sparkles, ArrowLeft, User, Mail, Lock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,46 @@ export const dynamic = 'force-dynamic';
 function BookingSuccessContent() {
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('booking_id');
+  const isNewAccount = searchParams.get('new_account') === 'true';
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Automatically create session for the user
+    const createSession = async () => {
+      if (!bookingId || isCreatingSession || sessionCreated) return;
+      
+      setIsCreatingSession(true);
+      try {
+        const response = await fetch('/api/auth/create-booking-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ bookingId }),
+        });
+
+        if (response.ok) {
+          setSessionCreated(true);
+        }
+      } catch (error) {
+        console.error('Failed to create session:', error);
+      } finally {
+        setIsCreatingSession(false);
+      }
+    };
+
+    createSession();
+  }, [bookingId, isCreatingSession, sessionCreated]);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#e8edf2] py-20">
@@ -29,10 +70,12 @@ function BookingSuccessContent() {
               <Check className="w-12 h-12 text-green-600" />
             </div>
             <h1 className="text-4xl font-serif text-[#2d3748] mb-3">
-              Payment Successful!
+              {isNewAccount ? "Welcome to Ivory's Choice!" : "Payment Successful!"}
             </h1>
             <p className="text-[#64748b] text-lg">
-              Your appointment has been confirmed
+              {isNewAccount 
+                ? "Your account has been created and your appointment is confirmed" 
+                : "Your appointment has been confirmed"}
             </p>
             {bookingId && (
               <p className="text-sm text-[#64748b] mt-2">
@@ -40,6 +83,35 @@ function BookingSuccessContent() {
               </p>
             )}
           </div>
+
+          {/* New Account Info */}
+          {isNewAccount && (
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <User className="w-5 h-5 text-blue-600 mr-2" />
+                  <h3 className="text-lg font-semibold text-[#2d3748]">
+                    Your Ivory's Choice Account
+                  </h3>
+                </div>
+                <p className="text-[#64748b] mb-4">
+                  We've automatically created an account for you! You're now logged in and can access all features.
+                </p>
+                <div className="space-y-3 bg-white/60 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm">
+                      <Mail className="w-4 h-4 text-[#64748b] mr-2" />
+                      <span className="text-[#2d3748]">Check your email for login details</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <Lock className="w-4 h-4 text-[#64748b] mr-2" />
+                    <span className="text-[#64748b]">You can set a new password in your account settings</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Confirmation Card */}
           <Card className="bg-white border-[#e2e8f0]">
@@ -50,15 +122,21 @@ function BookingSuccessContent() {
               <ul className="space-y-3 text-[#64748b]">
                 <li className="flex items-start">
                   <Check className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-                  <span>You'll receive a confirmation email shortly</span>
+                  <span>You'll receive a confirmation email with your booking details{isNewAccount ? ' and account information' : ''}</span>
                 </li>
                 <li className="flex items-start">
                   <Check className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
                   <span>Your nail tech will be notified of your booking</span>
                 </li>
+                {isNewAccount && (
+                  <li className="flex items-start">
+                    <Check className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <span>You can now manage your bookings and view your appointment history</span>
+                  </li>
+                )}
                 <li className="flex items-start">
                   <Check className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-                  <span>Download the app to manage your appointment</span>
+                  <span>Download the app for the best experience</span>
                 </li>
               </ul>
             </CardContent>
